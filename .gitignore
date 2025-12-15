@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+
+# .NET build artifacts
+**/bin/
+**/obj/
+**/TestResults/
+**/*.user
+**/*.suo
+**/*.cache
+**/*.log
+
+# IDE
+**/.idea/
+**/.vscode/
+
+# Selenium / SpecFlow artifacts
+**/Screenshots/
+**/*.feature.cs
+
+# Node/Python (на всяк випадок)
+**/node_modules/
+**/__pycache__/
+**/.ipynb_checkpoints/
+
+# Secrets
+**/.env
+**/*.pfx
+**/*.pem
+**/*.key
+
+# SQLite db (треба в репо )
+**/*.db
+.vs/
+.vs/

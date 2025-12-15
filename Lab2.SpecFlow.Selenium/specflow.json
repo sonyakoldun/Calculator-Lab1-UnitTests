@@ -1,0 +1,9 @@
+{
+  "specflow": {
+    "runtime": {
+      "missingOrPendingStepsOutcome": "Error"
+    },
+    "stepAssemblies": []
+  }
+}
+
