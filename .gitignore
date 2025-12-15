@@ -1,6 +1,11 @@
 # macOS
 .DS_Store
 
+# Visual Studio / Rider
+.vs/
+.vscode/
+.idea/
+
 # .NET build artifacts
 **/bin/
 **/obj/
@@ -10,15 +15,11 @@
 **/*.cache
 **/*.log
 
-# IDE
-**/.idea/
-**/.vscode/
-
-# Selenium / SpecFlow artifacts
-**/Screenshots/
+# SpecFlow
 **/*.feature.cs
+**/Screenshots/
 
-# Node/Python (на всяк випадок)
+# Node / Python
 **/node_modules/
 **/__pycache__/
 **/.ipynb_checkpoints/
@@ -28,7 +29,3 @@
 **/*.pfx
 **/*.pem
 **/*.key
-
-# SQLite db (треба в репо )
-.vs/
-.vs/
