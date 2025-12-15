@@ -1,5 +1,4 @@
 using System;
-using System.Configuration;
 using System.Data;
 using System.Data.SQLite;
 using System.IO;
@@ -10,7 +9,7 @@ namespace AnalizerClassLibrary.Tests
 {
     /// <summary>
     /// Модульні тести для методу RunEstimate з класу AnalaizerClass
-    /// Варіант 9: бібліотека AnalaizerClassLibrary, метод RunEstimate
+    /// Варіант 9: бібліотека AnalizerClassLibrary, метод RunEstimate
     /// </summary>
     [TestClass]
     public class RunEstimateTests
@@ -23,21 +22,17 @@ namespace AnalizerClassLibrary.Tests
         [ClassInitialize]
         public static void ClassInitialize(TestContext context)
         {
-            // Отримуємо рядок підключення з App.config
-            connectionString = ConfigurationManager.ConnectionStrings["TestDatabase"]?.ConnectionString;
+            // Шлях до бази даних SQLite (відносно кореня solution)
+            string solutionRoot = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", ".."));
+            string dbPath = Path.Combine(solutionRoot, "Database", "calculator_test.db");
             
-            if (string.IsNullOrEmpty(connectionString))
+            // Перевірка існування файлу
+            if (!File.Exists(dbPath))
             {
-                // Якщо немає в config, використовуємо стандартний шлях до SQLite файлу
-                // Шукаємо файл БД у папці з проєктом або в корені solution
-                string dbPath = Path.Combine(Directory.GetCurrentDirectory(), "CalculatorTestDB.db");
-                if (!File.Exists(dbPath))
-                {
-                    // Спробуємо знайти в папці Database
-                    dbPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "Database", "CalculatorTestDB.db");
-                }
-                connectionString = $"Data Source={dbPath};Version=3;";
+                throw new FileNotFoundException($"Database file not found: {dbPath}");
             }
+            
+            connectionString = $"Data Source={dbPath};Version=3;";
 
             // Вимкнути показ повідомлень про помилки (для тестів)
             AnalaizerClass.ShowMessage = false;
@@ -84,20 +79,20 @@ namespace AnalizerClassLibrary.Tests
 
         /// <summary>
         /// Тест на основі даних з бази даних
-        /// Читає всі тестові випадки з БД і перевіряє їх
+        /// Читає всі тестові випадки з БД і перевіряє їх по черзі
         /// </summary>
         [TestMethod]
         public void RunEstimate_AllTestsFromDatabase()
         {
             // Arrange
-            using (SQLiteConnection connection = new SQLiteConnection(connectionString))
+            using (var connection = new SQLiteConnection(connectionString))
             {
                 connection.Open();
                 string query = "SELECT TestName, Expression, ExpectedResult, IsError, ErrorCode, Description, TestCategory FROM TestExpressions ORDER BY Id";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (var command = new SQLiteCommand(query, connection))
                 {
-                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    using (var reader = command.ExecuteReader())
                     {
                         int testCount = 0;
                         int passedCount = 0;
@@ -109,8 +104,9 @@ namespace AnalizerClassLibrary.Tests
                             string testName = reader["TestName"].ToString();
                             string expression = reader["Expression"].ToString();
                             string expectedResult = reader["ExpectedResult"].ToString();
-                            bool isError = Convert.ToBoolean(reader["IsError"]); // SQLite повертає INTEGER (0/1)
-                            string description = reader["Description"].ToString();
+                            // IsError - INTEGER: 0 = false, 1 = true
+                            bool isError = Convert.ToBoolean(reader["IsError"]);
+                            string description = reader["Description"] == DBNull.Value ? "" : reader["Description"].ToString();
                             string category = reader["TestCategory"].ToString();
 
                             try
@@ -124,14 +120,20 @@ namespace AnalizerClassLibrary.Tests
                                     if (isError)
                                     {
                                         // Очікувалась помилка - перевіряємо, чи відповідає результат
-                                        if (preparedExpression != null && preparedExpression.Contains(expectedResult.Replace("&", "").Substring(0, 10)))
+                                        if (preparedExpression != null && expectedResult.Length > 0)
                                         {
-                                            passedCount++;
-                                            continue;
+                                            string expectedError = expectedResult.Replace("&", "").Trim();
+                                            string actualError = preparedExpression.Replace("&", "").Trim();
+                                            
+                                            if (expectedError.Length > 0 && actualError.Contains(expectedError.Substring(0, Math.Min(10, expectedError.Length))))
+                                            {
+                                                passedCount++;
+                                                continue;
+                                            }
                                         }
                                     }
                                     // Якщо не очікувалась помилка, але вона виникла
-                                    Assert.Fail($"Test '{testName}' failed: Expected '{expectedResult}', but got '{preparedExpression}'");
+                                    Assert.Fail($"Test '{testName}': Expected '{expectedResult}', but got '{preparedExpression}'");
                                 }
 
                                 // Встановлюємо відформатований вираз
@@ -143,7 +145,7 @@ namespace AnalizerClassLibrary.Tests
                                 // Assert
                                 if (isError)
                                 {
-                                    // Очікується помилка
+                                    // Очікується помилка - результат має починатися з "&"
                                     Assert.IsTrue(actualResult.StartsWith("&"), 
                                         $"Test '{testName}': Expected error, but got result: {actualResult}");
                                     
@@ -154,8 +156,11 @@ namespace AnalizerClassLibrary.Tests
                                         string actualError = actualResult.Replace("&", "").Trim();
                                         
                                         // Перевіряємо, чи містить результат очікуваний код помилки
-                                        Assert.IsTrue(actualError.Contains(expectedError.Substring(0, Math.Min(15, expectedError.Length))), 
-                                            $"Test '{testName}': Expected error '{expectedError}', but got '{actualError}'");
+                                        if (expectedError.Length > 0)
+                                        {
+                                            Assert.IsTrue(actualError.Contains(expectedError.Substring(0, Math.Min(15, expectedError.Length))), 
+                                                $"Test '{testName}': Expected error '{expectedError}', but got '{actualError}'");
+                                        }
                                     }
                                 }
                                 else
@@ -195,21 +200,21 @@ namespace AnalizerClassLibrary.Tests
         [TestMethod]
         public void RunEstimate_ValidExpressions()
         {
-            using (SQLiteConnection connection = new SQLiteConnection(connectionString))
+            using (var connection = new SQLiteConnection(connectionString))
             {
                 connection.Open();
                 string query = "SELECT TestName, Expression, ExpectedResult, Description FROM TestExpressions WHERE TestCategory = 'Valid' ORDER BY Id";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (var command = new SQLiteCommand(query, connection))
                 {
-                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
                             string testName = reader["TestName"].ToString();
                             string expression = reader["Expression"].ToString();
                             string expectedResult = reader["ExpectedResult"].ToString();
-                            string description = reader["Description"].ToString();
+                            string description = reader["Description"] == DBNull.Value ? "" : reader["Description"].ToString();
 
                             // Arrange & Act
                             string preparedExpression = PrepareExpression(expression);
@@ -234,21 +239,21 @@ namespace AnalizerClassLibrary.Tests
         [TestMethod]
         public void RunEstimate_DivisionByZero()
         {
-            using (SQLiteConnection connection = new SQLiteConnection(connectionString))
+            using (var connection = new SQLiteConnection(connectionString))
             {
                 connection.Open();
                 string query = "SELECT TestName, Expression, ExpectedResult, Description FROM TestExpressions WHERE TestCategory = 'DivisionByZero' ORDER BY Id";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (var command = new SQLiteCommand(query, connection))
                 {
-                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
                             string testName = reader["TestName"].ToString();
                             string expression = reader["Expression"].ToString();
                             string expectedResult = reader["ExpectedResult"].ToString();
-                            string description = reader["Description"].ToString();
+                            string description = reader["Description"] == DBNull.Value ? "" : reader["Description"].ToString();
 
                             // Arrange & Act
                             string preparedExpression = PrepareExpression(expression);
@@ -275,21 +280,21 @@ namespace AnalizerClassLibrary.Tests
         [TestMethod]
         public void RunEstimate_Overflow()
         {
-            using (SQLiteConnection connection = new SQLiteConnection(connectionString))
+            using (var connection = new SQLiteConnection(connectionString))
             {
                 connection.Open();
                 string query = "SELECT TestName, Expression, ExpectedResult, Description FROM TestExpressions WHERE TestCategory = 'Overflow' ORDER BY Id";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (var command = new SQLiteCommand(query, connection))
                 {
-                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
                             string testName = reader["TestName"].ToString();
                             string expression = reader["Expression"].ToString();
                             string expectedResult = reader["ExpectedResult"].ToString();
-                            string description = reader["Description"].ToString();
+                            string description = reader["Description"] == DBNull.Value ? "" : reader["Description"].ToString();
 
                             // Arrange & Act
                             string preparedExpression = PrepareExpression(expression);
@@ -316,21 +321,21 @@ namespace AnalizerClassLibrary.Tests
         [TestMethod]
         public void RunEstimate_TooManyOperands()
         {
-            using (SQLiteConnection connection = new SQLiteConnection(connectionString))
+            using (var connection = new SQLiteConnection(connectionString))
             {
                 connection.Open();
                 string query = "SELECT TestName, Expression, ExpectedResult, Description FROM TestExpressions WHERE TestCategory = 'TooManyOperands' ORDER BY Id";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (var command = new SQLiteCommand(query, connection))
                 {
-                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
                             string testName = reader["TestName"].ToString();
                             string expression = reader["Expression"].ToString();
                             string expectedResult = reader["ExpectedResult"].ToString();
-                            string description = reader["Description"].ToString();
+                            string description = reader["Description"] == DBNull.Value ? "" : reader["Description"].ToString();
 
                             // Arrange & Act
                             string preparedExpression = PrepareExpression(expression);
@@ -357,21 +362,21 @@ namespace AnalizerClassLibrary.Tests
         [TestMethod]
         public void RunEstimate_EdgeCases()
         {
-            using (SQLiteConnection connection = new SQLiteConnection(connectionString))
+            using (var connection = new SQLiteConnection(connectionString))
             {
                 connection.Open();
                 string query = "SELECT TestName, Expression, ExpectedResult, Description FROM TestExpressions WHERE TestCategory = 'EdgeCase' ORDER BY Id";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (var command = new SQLiteCommand(query, connection))
                 {
-                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
                             string testName = reader["TestName"].ToString();
                             string expression = reader["Expression"].ToString();
                             string expectedResult = reader["ExpectedResult"].ToString();
-                            string description = reader["Description"].ToString();
+                            string description = reader["Description"] == DBNull.Value ? "" : reader["Description"].ToString();
 
                             // Arrange & Act
                             string preparedExpression = PrepareExpression(expression);
