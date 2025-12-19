@@ -1,7 +1,0 @@
-<Project>
-  <PropertyGroup>
-    <!-- Вказуємо шлях до .NET Framework reference assemblies через Mono -->
-    <TargetFrameworkRootPath Condition="'$(TargetFrameworkRootPath)' == ''">/Library/Frameworks/Mono.framework/Versions/Current/lib/mono</TargetFrameworkRootPath>
-    <FrameworkPathOverride Condition="'$(FrameworkPathOverride)' == ''">$(TargetFrameworkRootPath)/4.7.2-api</FrameworkPathOverride>
-  </PropertyGroup>
-</Project>

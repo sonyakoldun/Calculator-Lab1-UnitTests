@@ -1,0 +1,7 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1765879825523,420,Home Page,200,OK,01_SMOKE 1-1,text,true,,333135,191,1,1,https://ffl.org.ua/,379,0,278
+1765879825951,394,News Page,200,OK,01_SMOKE 1-1,text,true,,59218,195,1,1,https://ffl.org.ua/news,392,0,0
+1765879826353,326,FAQ Page,200,OK,01_SMOKE 1-1,text,true,,34838,451,1,1,https://ffl.org.ua/questions/faq,325,0,0
+1765879826682,625,Questions Page,200,OK,01_SMOKE 1-1,text,true,,120616,447,1,1,https://ffl.org.ua/questions,597,0,0
+1765879827309,316,Contacts Page,200,OK,01_SMOKE 1-1,text,true,,36626,446,1,1,https://ffl.org.ua/pages/66,314,0,0
+1765879827628,360,Video Gallery,200,OK,01_SMOKE 1-1,text,true,,42548,449,1,1,https://ffl.org.ua/media/video,358,0,0

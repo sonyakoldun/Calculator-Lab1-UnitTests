@@ -1,31 +1,9 @@
-# macOS
 .DS_Store
-
-# Visual Studio / Rider
-.vs/
-.vscode/
-.idea/
-
-# .NET build artifacts
+**/.DS_Store
 **/bin/
 **/obj/
+**/.vs/
 **/TestResults/
 **/*.user
 **/*.suo
-**/*.cache
-**/*.log
-
-# SpecFlow
-**/*.feature.cs
-**/Screenshots/
-
-# Node / Python
-**/node_modules/
-**/__pycache__/
-**/.ipynb_checkpoints/
-
-# Secrets
-**/.env
-**/*.pfx
-**/*.pem
-**/*.key
+packages/
